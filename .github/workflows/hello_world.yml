@@ -10,3 +10,5 @@ jobs:
         uses: actions/checkout@v2
       - name: Print Hello World
         run: echo "Hello, GitHub Actions!"
+      - name: adding new step
+        run: echo "hey heyyloo"
