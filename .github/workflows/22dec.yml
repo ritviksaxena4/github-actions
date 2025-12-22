@@ -1,18 +1,17 @@
 name: githubactions_new_file
 
 on:
-    workflow_dispatch:
-        inputs:
-            description: 'greet the person'
-            default: 'World'
-            required: 'true'
-            
+  workflow_dispatch:
+    inputs:
+      name:
+        description: 'greet the person'
+        required: true
+        default: 'World'
+
 jobs:
-    greeting:
-        runs-on: ubuntu-latest
-        
-        steps:
-            - name: give the greeting
-              run: echo "Hello ${{ github.event.inputs.name}}"
-                
-  
+  greeting:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: give the greeting
+        run: echo "Hello ${{ github.event.inputs.name }}"
