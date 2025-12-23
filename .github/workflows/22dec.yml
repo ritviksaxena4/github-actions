@@ -7,7 +7,7 @@ on:
         description: 'greet the person'
         required: true
         default: 'World'
-
+##jobs
 jobs:
   greeting:
     runs-on: ubuntu-latest
