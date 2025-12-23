@@ -6,7 +6,7 @@ on:
       name:
         description: 'greet the person'
         required: true
-        default: 'World'
+        
 ##jobs
 jobs:
   greeting:
