@@ -1,0 +1,109 @@
+name: mycd pipeline
+
+on:
+    push:
+      branches : [main]
+
+env: 
+    K8S_NAMESPACE: prod
+    K8S_DEPLOYMENT: gits-app-deployment
+    CONTAINER_NAME: gits-app-container
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: setup python
+      uses: actions/setup-python@v6
+      with:
+        python-version: '3.13' 
+
+  test:
+    name: testing the sceanrios       
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: setup python 
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+    - name: Run the tests
+      run: |
+        pytest test_app.py -v
+
+  build-tag-and-push:
+    name: build and push to ecr
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, Tag, and Push
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: github-gists-api
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+  
+  deploy-to-eks:
+    name: deploy to eks
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Install kubectl
+      uses: azure/setup-kubectl@v3
+      with:
+        version: 'latest'  
+
+    - name: update the eks kube config file
+      run: | 
+        aws eks update-kubeconfig --region us-east-1 --name myekscluster
+
+    - name: injetc the tag image in deployment.yml
+      run: |
+        IMAGE="${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}"
+        echo "Updating deployment '${{ env.K8S_DEPLOYMENT }}' in namespace '${{ env.K8S_NAMESPACE }}' to image: ${IMAGE}"
+        kubectl set image deployment/${{ env.K8S_DEPLOYMENT }} \
+        ${{ env.CONTAINER_NAME }}=${IMAGE} -n ${{ env.K8S_NAMESPACE }} --record
+        kubectl rollout status deployment/${{ env.K8S_DEPLOYMENT }} -n ${{ env.K8S_NAMESPACE }} --timeout=180s
+
+    - name: apply all the kubectl manifests
+      run: | 
+        kubectl apply -f gits-app-deployment.yml -n ${{ env.K8S_NAMESPACE }}
+        kubectl apply -f gits-app-service.yml -n ${{ env.K8S_NAMESPACE }}
+        kubectl apply -f gits-app-ingress.yml -n ${{ env.K8S_NAMESPACE }}
+      
+
+
+
+
+
+
+
