@@ -8,6 +8,8 @@ env:
     K8S_NAMESPACE: prod
     K8S_DEPLOYMENT: gits-app-deployment
     CONTAINER_NAME: gits-app-container
+    AWS_ACCESS_KEY_ID: AKIA3CMCCI7G36SSAU73
+    AWS_SECRET_ACCESS_KEY: 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
 
 jobs:
   build:
